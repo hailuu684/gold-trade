@@ -138,8 +138,8 @@ def login_mt5_demo():
     # account = 33012302
     # password = "!yJ0ZhOk"
 
-    account = 33012417
-    password = '-h2eUvZb'
+    account = 33012432
+    password = 'MxVm-m6k'
 
     authorized = mt5.login(account, password=password, server="ACCapital-Demo")  # ,
     if authorized:

@@ -53,18 +53,37 @@ async def get_last_message():
         while True:
             async for message in client.iter_messages(channel, limit=1):
                 # Check if the message starts with "PAIR: XAUUSD"
-                if message.text and message.text.startswith("PAIR: XAUUSD") and message.id != last_msg_id:
+                if message.text and message.text.startswith("PAIR") and message.id != last_msg_id:
 
                     last_msg_id = message.id
 
                     # Parse the message to extract relevant details
                     lines = message.text.splitlines()
-                    pair = lines[0].split(":")[1].strip()
-                    trade_type = lines[1].split(":")[1].strip()
-                    entry_1 = float(lines[2].split(":")[1].replace(",", "").strip())
-                    entry_2 = float(lines[3].split(":")[1].replace(",", "").strip())
-                    stop_loss = float(lines[4].split(":")[1].replace(",", "").strip())
+                    #
+                    # Extract the pair (remove the # symbol if present)
+                    pair = lines[0].split(":")[1].replace("#", "").strip()
 
+                    # Extract the trade type
+                    trade_type = lines[1].split(":")[1].strip()
+
+                    # Extract both entry prices from the same line
+                    entries = lines[2].split(":")[1].strip().split()  # Split the entry values by space
+                    entry_1 = float(entries[0].strip())
+                    entry_2 = float(entries[1].strip())
+
+                    # Extract the stop loss
+                    stop_loss = float(lines[3].split(":")[1].strip())
+
+                    # # Parse the message to extract relevant details
+                    # lines = message.text.splitlines()
+                    # pair = lines[0].split(":")[1].strip()
+                    # trade_type = lines[1].split(":")[1].strip()
+                    # entry_1 = float(lines[2].split(":")[1].replace(",", "").strip())
+                    # entry_2 = float(lines[3].split(":")[1].replace(",", "").strip())
+                    # stop_loss = float(lines[4].split(":")[1].replace(",", "").strip())
+
+                    # print(trade_type)
+                    # print(entry_1, entry_2)
                     # Determine pip adjustment based on trade type
                     pip_adjust = 0.1  # 1 pip is usually 0.1 for XAUUSD
                     gain_factors = [20, 40, 70, 100, 200]
@@ -92,8 +111,9 @@ async def get_last_message():
                     place_trade(pair, trade_type, entry_1, stop_loss, tps_1, account_balance,
                                 current_price=current_price)
 
-                    #todo: for limit orders later
-                    # place_trade(pair, trade_type, entry_2, stop_loss, tps_2, account_balance)
+
+                    place_trade(pair, trade_type, entry_2, stop_loss, tps_2, account_balance,
+                                current_price=current_price)
 
                     # Print trade details for Entry 1
                     print(f"--- Trade Details for Entry 1 ---")
