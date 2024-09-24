@@ -3,7 +3,7 @@ from telethon.sync import TelegramClient
 import os
 import asyncio
 from place_trades import api_id, api_hash, login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry
-
+from cancel_trades import cancel_all_pending_orders
 
 last_msg_id = None
 title_name = 'goldtrades123456789'
@@ -111,7 +111,6 @@ async def get_last_message():
                     place_trade(pair, trade_type, entry_1, stop_loss, tps_1, account_balance,
                                 current_price=current_price)
 
-
                     place_trade(pair, trade_type, entry_2, stop_loss, tps_2, account_balance,
                                 current_price=current_price)
 
@@ -138,10 +137,13 @@ async def get_last_message():
                     print("Received '+20pips' message, modifying stop loss to entry price.")
 
                     # Modify stop loss for all open trades for XAUUSD
-                    modify_stop_loss_to_entry('XAUUSD')
+                    modify_stop_loss_to_entry(pair)
 
                     # Set the flag to True to ensure the modification is only done once
                     stop_loss_modified = True
+
+                    # Cancel all pre-orders (pending limit orders) for the XAUUSD pair
+                    cancel_all_pending_orders(pair)
 
             # Check for new messages every 5 seconds
             await asyncio.sleep(5)

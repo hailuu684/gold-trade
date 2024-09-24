@@ -7,7 +7,7 @@ from datetime import datetime
 
 api_id = 11014950
 api_hash = 'eb0b24cf0210a85e2132470feb0106fa'
-
+phone_number = '+84329050997'
 
 # Function to calculate the volume based on risk management (1% of account balance)
 def calculate_volume(symbol, entry_price, stop_loss, account_balance, risk_percentage=1.0):
@@ -98,6 +98,50 @@ def modify_stop_loss_to_entry(symbol):
             print(f"Failed to modify trade {trade.ticket}: {result.comment}")
 
 
+# Define place_trade function
+def place_one_trade(pair, trade_type, entry_price, stop_loss, take_profit, account_balance, current_price):
+    volume = 0.02  # Example volume; adjust as necessary
+
+    # market orders
+    if abs(current_price - entry_price) < 1:
+        order_type = mt5.ORDER_TYPE_BUY if trade_type == 'BUY' else mt5.ORDER_TYPE_SELL
+        filling_type = mt5.ORDER_FILLING_IOC  # For market orders
+        action = mt5.TRADE_ACTION_DEAL
+
+    # limit orders
+    else:
+        order_type = mt5.ORDER_TYPE_BUY_LIMIT if trade_type == 'BUY' else mt5.ORDER_TYPE_SELL_LIMIT
+        filling_type = mt5.ORDER_FILLING_IOC  # For limit orders
+        action = mt5.TRADE_ACTION_PENDING
+
+    # Prepare the request for placing a trade
+    request = {
+        "action": action,
+        "symbol": pair,
+        "volume": volume,
+        "type": order_type,
+        "price": entry_price,  # The entry price
+        "sl": stop_loss,  # Stop loss
+        "tp": take_profit,  # Take profit
+        "deviation": 20,
+        "magic": 234000,  # Unique identifier for your trades
+        "comment": f"Trade {trade_type} {pair} at {entry_price}",
+        "type_time": mt5.ORDER_TIME_GTC,  # Good till canceled
+        "type_filling": filling_type,
+    }
+
+    # Send the trade request
+    result = mt5.order_send(request)
+    if result.retcode != mt5.TRADE_RETCODE_DONE:
+        print(f"Failed to place trade: {result.comment}")
+    else:
+        print(f"Trade placed successfully. "
+              f"Pair: {pair}"
+              f"Trade Type: {trade_type}, "
+              f"Entry: {entry_price}, "
+              f"SL: {stop_loss}, "
+              f"TP: {take_profit}")
+
 def test_login():
     # connect to MetaTrader 5
     if not mt5.initialize():
@@ -138,8 +182,8 @@ def login_mt5_demo():
     # account = 33012302
     # password = "!yJ0ZhOk"
 
-    account = 33012432
-    password = 'MxVm-m6k'
+    account = 33012417
+    password = '-h2eUvZb'
 
     authorized = mt5.login(account, password=password, server="ACCapital-Demo")  # ,
     if authorized:
