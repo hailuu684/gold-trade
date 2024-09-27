@@ -2,12 +2,6 @@ import MetaTrader5 as mt5
 import time
 from datetime import datetime
 
-# api_id = 23104224
-# api_hash = 'b44355161c6b2938907b917c1c95905e'
-
-api_id = 11014950
-api_hash = 'eb0b24cf0210a85e2132470feb0106fa'
-phone_number = '+84329050997'
 
 # Function to calculate the volume based on risk management (1% of account balance)
 def calculate_volume(symbol, entry_price, stop_loss, account_balance, risk_percentage=1.0):
@@ -87,8 +81,8 @@ def modify_stop_loss_to_entry(symbol):
             "position": trade.ticket,
             "symbol": trade.symbol,
             "sl": entry_price,  # Set stop loss to the entry price
-            "tp": trade.tp,     # Keep the take profit as is
-            "deviation": 20,     # Allowable price deviation
+            "tp": trade.tp,  # Keep the take profit as is
+            "deviation": 20,  # Allowable price deviation
         }
 
         result = mt5.order_send(modify_request)
@@ -141,6 +135,7 @@ def place_one_trade(pair, trade_type, entry_price, stop_loss, take_profit, accou
               f"Entry: {entry_price}, "
               f"SL: {stop_loss}, "
               f"TP: {take_profit}")
+
 
 def test_login():
     # connect to MetaTrader 5
