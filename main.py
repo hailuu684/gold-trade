@@ -13,22 +13,22 @@ num_trial = '1'
 # Create a new Telegram client
 existed_path = f'E:\crypto\gold-trade\{num_trial}_trial.session'
 
-if os.path.exists(existed_path):
-    # Delete the file
-    os.remove(existed_path)
-
-    journal_path = f'E:\crypto\gold-trade\{num_trial}_trial.session-journal'
-    if os.path.exists(journal_path):
-        os.remove(journal_path)
-
-    print(f"{existed_path} has been deleted.")
-
-    client = TelegramClient(f'{num_trial}_trial', api_id, api_hash)
-    client.start()
-
-else:
-    client = TelegramClient(f'{num_trial}_trial', api_id, api_hash)
-    client.start()
+# if os.path.exists(existed_path):
+#     # Delete the file
+#     os.remove(existed_path)
+#
+#     journal_path = f'E:\crypto\gold-trade\{num_trial}_trial.session-journal'
+#     if os.path.exists(journal_path):
+#         os.remove(journal_path)
+#
+#     print(f"{existed_path} has been deleted.")
+#
+#     client = TelegramClient(f'{num_trial}_trial', api_id, api_hash)
+#     client.start()
+#
+# else:
+client = TelegramClient(f'{num_trial}_trial', api_id, api_hash)
+client.start()
 
 channel_name = 'FVG_PrivateSignal'
 channel_name_test = 'testgoldtrade'
