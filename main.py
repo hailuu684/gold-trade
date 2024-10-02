@@ -2,9 +2,9 @@ from numpy.array_api import float32
 from telethon.sync import TelegramClient
 import os
 import asyncio
-from place_trades import api_id, api_hash, login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry
+from place_trades import login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry
 from cancel_trades import cancel_all_pending_orders
-
+from secret_keys import api_id, api_hash
 last_msg_id = None
 title_name = 'goldtrades123456789'
 short_name = 'goldtrades'
@@ -47,7 +47,7 @@ async def get_last_message():
 
     async with TelegramClient(session_name, api_id, api_hash) as client:
         # Fetch the channel entity (by username or ID)
-        channel = await client.get_entity(channel_name_test)
+        channel = await client.get_entity(channel_name)
 
         # Fetch the last message (limit=1 to get the latest message only)
         while True:
@@ -64,7 +64,7 @@ async def get_last_message():
                     pair = lines[0].split(":")[1].replace("#", "").strip()
 
                     # Extract the trade type
-                    trade_type = lines[1].split(":")[1].strip()
+                    trade_type = lines[1].split(":")[1].strip().split()[0]  # Get only 'BUY' or 'SELL'
 
                     # Extract both entry prices from the same line
                     entries = lines[2].split(":")[1].strip().split()  # Split the entry values by space
@@ -94,6 +94,8 @@ async def get_last_message():
                     elif trade_type == 'SELL':
                         tps_1 = [entry_1 - (g * pip_adjust) for g in gain_factors]
                         tps_2 = [entry_2 - (g * pip_adjust) for g in gain_factors]
+                    else:
+                        raise ValueError(f"Unsupported trade type: {trade_type}")
 
                     # Symbol infor
                     symbol_info = mt5.symbol_info_tick("XAUUSD")._asdict()
@@ -137,13 +139,13 @@ async def get_last_message():
                     print("Received '+20pips' message, modifying stop loss to entry price.")
 
                     # Modify stop loss for all open trades for XAUUSD
-                    modify_stop_loss_to_entry(pair)
+                    modify_stop_loss_to_entry("XAUUSD")
 
                     # Set the flag to True to ensure the modification is only done once
                     stop_loss_modified = True
 
                     # Cancel all pre-orders (pending limit orders) for the XAUUSD pair
-                    cancel_all_pending_orders(pair)
+                    cancel_all_pending_orders("XAUUSD")
 
             # Check for new messages every 5 seconds
             await asyncio.sleep(5)
