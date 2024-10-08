@@ -2,9 +2,11 @@ from numpy.array_api import float32
 from telethon.sync import TelegramClient
 import os
 import asyncio
-from place_trades import login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry
+from place_trades import login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry, login_real_account
 from cancel_trades import cancel_all_pending_orders
 from secret_keys import api_id, api_hash
+from config import parameters
+
 last_msg_id = None
 title_name = 'goldtrades123456789'
 short_name = 'goldtrades'
@@ -36,6 +38,7 @@ session_name = f'my_session'
 
 # Login account mt5 demo
 account_info = login_mt5_demo()
+# account_info = login_real_account(parameters)
 
 stop_loss_modified = False
 
@@ -47,7 +50,7 @@ async def get_last_message():
 
     async with TelegramClient(session_name, api_id, api_hash) as client:
         # Fetch the channel entity (by username or ID)
-        channel = await client.get_entity(channel_name)
+        channel = await client.get_entity(channel_name_test)
 
         # Fetch the last message (limit=1 to get the latest message only)
         while True:
@@ -85,8 +88,8 @@ async def get_last_message():
                     # print(trade_type)
                     # print(entry_1, entry_2)
                     # Determine pip adjustment based on trade type
-                    pip_adjust = 0.1  # 1 pip is usually 0.1 for XAUUSD
-                    gain_factors = [20, 40, 70, 100, 200]
+                    pip_adjust = parameters[pair]['pip_adjust']
+                    gain_factors = parameters[pair]['gain_factors']
 
                     if trade_type == 'BUY':
                         tps_1 = [entry_1 + (g * pip_adjust) for g in gain_factors]
@@ -135,14 +138,15 @@ async def get_last_message():
                         print(f"Take Profit {i}: {tp}")
 
                 # Check if the last message is "+20pips" and stop loss modification has not been done
-                if message.text and "+20pips" in message.text and not stop_loss_modified:
+                if message.text and "+20 Pips" in message.text and not stop_loss_modified:
                     print("Received '+20pips' message, modifying stop loss to entry price.")
 
                     # Modify stop loss for all open trades for XAUUSD
-                    modify_stop_loss_to_entry("XAUUSD")
+                    is_modified_success = modify_stop_loss_to_entry("XAUUSD")
 
                     # Set the flag to True to ensure the modification is only done once
-                    stop_loss_modified = True
+                    if is_modified_success:
+                        stop_loss_modified = True
 
                     # Cancel all pre-orders (pending limit orders) for the XAUUSD pair
                     cancel_all_pending_orders("XAUUSD")
