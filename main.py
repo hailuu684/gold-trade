@@ -2,7 +2,7 @@ from numpy.array_api import float32
 from telethon.sync import TelegramClient
 import os
 import asyncio
-from place_trades import login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry, login_real_account
+from place_trades import login_mt5_demo, mt5, place_trade, modify_stop_loss_to_entry, login_real_account, modify_tp_of_entry_1
 from cancel_trades import cancel_all_pending_orders
 from secret_keys import api_id, api_hash
 from config import parameters
@@ -37,8 +37,8 @@ channel_name_test = 'testgoldtrade'
 session_name = f'my_session'
 
 # Login account mt5 demo
-account_info = login_mt5_demo()
-# account_info = login_real_account(parameters)
+# account_info = login_mt5_demo()
+account_info = login_real_account(parameters)
 
 stop_loss_modified = False
 
@@ -50,7 +50,7 @@ async def get_last_message():
 
     async with TelegramClient(session_name, api_id, api_hash) as client:
         # Fetch the channel entity (by username or ID)
-        channel = await client.get_entity(channel_name_test)
+        channel = await client.get_entity(channel_name)
 
         # Fetch the last message (limit=1 to get the latest message only)
         while True:
@@ -119,6 +119,8 @@ async def get_last_message():
                     place_trade(pair, trade_type, entry_2, stop_loss, tps_2, account_balance,
                                 current_price=current_price)
 
+                    stop_loss_modified = True
+
                     # Print trade details for Entry 1
                     print(f"--- Trade Details for Entry 1 ---")
                     print(f"Pair: {pair}")
@@ -150,6 +152,13 @@ async def get_last_message():
 
                     # Cancel all pre-orders (pending limit orders) for the XAUUSD pair
                     cancel_all_pending_orders("XAUUSD")
+
+                if current_price >= entry_2 and not stop_loss_modified:
+                    print(f"Current price {current_price} has reached Entry 2: {entry_2}, modifying TP of Entry 1.")
+                    is_modified_success = modify_tp_of_entry_1(pair, trade_type, entry_1)
+
+                    if is_modified_success:
+                        stop_loss_modified = True
 
             # Check for new messages every 5 seconds
             await asyncio.sleep(5)

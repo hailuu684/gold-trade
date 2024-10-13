@@ -21,7 +21,7 @@ def place_trade(symbol, trade_type, entry_price, stop_loss, tps, account_balance
     # Doc: https://www.mql5.com/en/docs/constants/tradingconstants/orderproperties#enum_order_property_integer
 
     # market orders
-    if abs(current_price - entry_price) < 1:
+    if abs(current_price - entry_price) < 0.5:
         order_type = mt5.ORDER_TYPE_BUY if trade_type == 'BUY' else mt5.ORDER_TYPE_SELL
         filling_type = mt5.ORDER_FILLING_IOC  # For market orders
         action = mt5.TRADE_ACTION_DEAL
@@ -33,7 +33,7 @@ def place_trade(symbol, trade_type, entry_price, stop_loss, tps, account_balance
         action = mt5.TRADE_ACTION_PENDING
 
     # volume = calculate_volume(symbol, entry_price, stop_loss, account_balance)
-    volume = 0.3
+    volume = 0.05
     for i, tp in enumerate(tps, start=1):
         request = {
             "action": action,
@@ -70,7 +70,9 @@ def modify_stop_loss_to_entry(symbol):
     open_trades = mt5.positions_get(symbol=symbol)
     if not open_trades:
         print(f"No open trades found for symbol: {symbol}")
-        return
+        return False
+
+    success = True  # Assume all modifications will be successful initially
 
     # Loop through all open trades and set stop loss to the entry price
     for trade in open_trades:
@@ -90,6 +92,44 @@ def modify_stop_loss_to_entry(symbol):
             print(f"Modified trade {trade.ticket}: Stop loss set to entry price.")
         else:
             print(f"Failed to modify trade {trade.ticket}: {result.comment}")
+            success = False  # Set success to False if any modification fails
+
+    return success
+
+
+def modify_tp_of_entry_1(pair, trade_type, entry_1_price):
+    """
+    Modify the take profit (TP) of the trade at entry 1 to its entry price when entry 2 is reached.
+    """
+    # Retrieve all open trades for the pair
+    open_positions = mt5.positions_get(symbol=pair)
+
+    if not open_positions:
+        print(f"No open positions found for {pair}")
+        return False
+
+    success = True  # Assume all modifications will be successful initially
+
+    # Loop through all open trades and modify the TP of the trade corresponding to entry_1
+    for position in open_positions:
+        if position.price_open == entry_1_price and position.type == (0 if trade_type == 'BUY' else 1):  # Type 0: BUY, Type 1: SELL
+            modify_request = {
+                "action": mt5.TRADE_ACTION_SLTP,
+                "position": position.ticket,
+                "symbol": position.symbol,
+                "sl": position.sl,  # Keep the stop loss as is
+                "tp": entry_1_price,  # Set take profit to entry price
+                "deviation": 20,  # Allowable price deviation
+            }
+
+            result = mt5.order_send(modify_request)
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                print(f"Modified trade {position.ticket}: TP set to entry price {entry_1_price}.")
+            else:
+                print(f"Failed to modify trade {position.ticket}: {result.comment}")
+                success = False  # Set success to False if any modification fails
+
+    return success
 
 
 # Define place_trade function
@@ -195,4 +235,31 @@ def login_mt5_demo():
         # print("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))
         raise Exception("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))
 
+
+def login_real_account(parameters):
+    # connect to MetaTrader 5
+    if not mt5.initialize():
+        print("initialize() failed")
+        mt5.shutdown()
+
+    print("Initialized real account successfully")
+
+    account = parameters['real_account']['account']
+    password = parameters['real_account']['password']
+    server = parameters['real_account']['server']
+
+    authorized = mt5.login(account, password=password, server=server)  # ,
+    if authorized:
+        # display trading account data 'as is'
+        print(mt5.account_info())
+        # display trading account data in the form of a list
+        print("Show account_info()._asdict():")
+        account_info_dict = mt5.account_info()._asdict()
+        for prop in account_info_dict:
+            print("  {}={}".format(prop, account_info_dict[prop]))
+
+        return account_info_dict
+    else:
+        # print("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))
+        raise Exception("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))
 # test_login()
