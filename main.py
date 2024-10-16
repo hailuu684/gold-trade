@@ -1,4 +1,4 @@
-from numpy.array_api import float32
+# from numpy.array_api import float32
 from telethon.sync import TelegramClient
 import os
 import asyncio
@@ -6,6 +6,7 @@ from place_trades import login_mt5_demo, mt5, place_trade, modify_stop_loss_to_e
 from cancel_trades import cancel_all_pending_orders
 from secret_keys import api_id, api_hash
 from config import parameters
+from send_tele_msg import send_telegram_message, send_tele_gram_message_test_1
 
 last_msg_id = None
 title_name = 'goldtrades123456789'
@@ -37,23 +38,36 @@ channel_name_test = 'testgoldtrade'
 session_name = f'my_session'
 
 # Login account mt5 demo
-# account_info = login_mt5_demo()
-account_info = login_real_account(parameters)
+account_info = login_mt5_demo()
+# account_info = login_real_account(parameters)
+
+ENTRY_1 = None
+ENTRY_2 = None
+TRADE_TYPE = None
+TRADE_PAIR = None
 
 stop_loss_modified = False
-
+stop_loss_modified_tp_1 = False
 
 async def get_last_message():
 
     global last_msg_id
     global stop_loss_modified
+    global ENTRY_1
+    global ENTRY_2
+    global TRADE_TYPE
+    global stop_loss_modified_tp_1
+    global TRADE_PAIR
 
     async with TelegramClient(session_name, api_id, api_hash) as client:
         # Fetch the channel entity (by username or ID)
-        channel = await client.get_entity(channel_name)
+        channel = await client.get_entity(channel_name_test) # channel_name_test, channel_name
 
         # Fetch the last message (limit=1 to get the latest message only)
         while True:
+            symbol_info = mt5.symbol_info_tick("XAUUSD")._asdict()
+            CURRENT_PRICE = (symbol_info['bid'] + symbol_info['ask']) / 2
+
             async for message in client.iter_messages(channel, limit=1):
                 # Check if the message starts with "PAIR: XAUUSD"
                 if message.text and message.text.startswith("PAIR") and message.id != last_msg_id:
@@ -74,16 +88,17 @@ async def get_last_message():
                     entry_1 = float(entries[0].strip())
                     entry_2 = float(entries[1].strip())
 
+                    # Move to global
+                    ENTRY_1 = entry_1
+                    ENTRY_2 = entry_2
+                    TRADE_TYPE = trade_type
+                    TRADE_PAIR = pair
+
                     # Extract the stop loss
                     stop_loss = float(lines[3].split(":")[1].strip())
 
-                    # # Parse the message to extract relevant details
-                    # lines = message.text.splitlines()
-                    # pair = lines[0].split(":")[1].strip()
-                    # trade_type = lines[1].split(":")[1].strip()
-                    # entry_1 = float(lines[2].split(":")[1].replace(",", "").strip())
-                    # entry_2 = float(lines[3].split(":")[1].replace(",", "").strip())
-                    # stop_loss = float(lines[4].split(":")[1].replace(",", "").strip())
+                    # Forward telegram messages to other telegram group
+                    send_tele_gram_message_test_1(message.text)
 
                     # print(trade_type)
                     # print(entry_1, entry_2)
@@ -99,9 +114,6 @@ async def get_last_message():
                         tps_2 = [entry_2 - (g * pip_adjust) for g in gain_factors]
                     else:
                         raise ValueError(f"Unsupported trade type: {trade_type}")
-
-                    # Symbol infor
-                    symbol_info = mt5.symbol_info_tick("XAUUSD")._asdict()
 
                     if symbol_info is None:
                         print("Error: Could not retrieve symbol info")
@@ -119,7 +131,7 @@ async def get_last_message():
                     place_trade(pair, trade_type, entry_2, stop_loss, tps_2, account_balance,
                                 current_price=current_price)
 
-                    stop_loss_modified = True
+                    stop_loss_modified = False
 
                     # Print trade details for Entry 1
                     print(f"--- Trade Details for Entry 1 ---")
@@ -139,26 +151,83 @@ async def get_last_message():
                     for i, tp in enumerate(tps_2, start=1):
                         print(f"Take Profit {i}: {tp}")
 
-                # Check if the last message is "+20pips" and stop loss modification has not been done
-                if message.text and "+20 Pips" in message.text and not stop_loss_modified:
-                    print("Received '+20pips' message, modifying stop loss to entry price.")
+                # # Check if the last message is "+20pips" and stop loss modification has not been done
+                # if message.text and "+20 Pips" in message.text and not stop_loss_modified:
+                #     print("Received '+20pips' message, modifying stop loss to entry price.")
+                #
+                #     # Modify stop loss for all open trades for XAUUSD
+                #     is_modified_success = modify_stop_loss_to_entry("XAUUSD")
+                #
+                #     # Set the flag to True to ensure the modification is only done once
+                #     if is_modified_success:
+                #         stop_loss_modified = True
+                #
+                #     # Cancel all pre-orders (pending limit orders) for the XAUUSD pair
+                #     cancel_all_pending_orders("XAUUSD")
 
-                    # Modify stop loss for all open trades for XAUUSD
-                    is_modified_success = modify_stop_loss_to_entry("XAUUSD")
+                # 1. Automatically send message and modify stl if 20 pips from entry 1 is reached
+                # 2. Automatically set stl of entry to its price when reaches 20pips from entry 2
+                if TRADE_TYPE == 'BUY':
 
-                    # Set the flag to True to ensure the modification is only done once
-                    if is_modified_success:
-                        stop_loss_modified = True
+                    # print('current_price = ', CURRENT_PRICE)
+                    # print('condition = ', ENTRY_1 + 0.1*parameters[TRADE_PAIR]['gain_factors'][0])
+                    # print('stop_loss_modified = ', stop_loss_modified)
+                    # Do the 1st job
+                    if CURRENT_PRICE >= ENTRY_1 + 0.1*parameters[TRADE_PAIR]['gain_factors'][0] and not stop_loss_modified:
+                        # Modify stop loss for all open trades for XAUUSD
+                        is_modified_success = modify_stop_loss_to_entry(TRADE_PAIR)
 
-                    # Cancel all pre-orders (pending limit orders) for the XAUUSD pair
-                    cancel_all_pending_orders("XAUUSD")
+                        print('current_price = ', CURRENT_PRICE)
+                        print('condition = ', ENTRY_1 + 0.1*parameters[TRADE_PAIR]['gain_factors'][0])
+                        print('stop_loss_modified = ', stop_loss_modified)
 
-                if current_price >= entry_2 and not stop_loss_modified:
-                    print(f"Current price {current_price} has reached Entry 2: {entry_2}, modifying TP of Entry 1.")
-                    is_modified_success = modify_tp_of_entry_1(pair, trade_type, entry_1)
+                        # Set the flag to True to ensure the modification is only done once
+                        if is_modified_success:
+                            stop_loss_modified = True
 
-                    if is_modified_success:
-                        stop_loss_modified = True
+                        # Send message to telegram
+                        send_telegram_message(f"🟡 #{TRADE_PAIR} - {TRADE_TYPE}\n"
+                                              "✅ +20 Pips  (Đang Có Lãi, AE Nên TP 1 Phần Lệnh Nhé)")
+
+                    # Do the 2nd job
+                    if CURRENT_PRICE <= ENTRY_2 and not stop_loss_modified_tp_1:
+                        print(f"Current price {CURRENT_PRICE} has reached Entry 2: {ENTRY_2}, modifying TP of Entry 1.")
+                        stop_loss_modified_tp_1 = modify_tp_of_entry_1(TRADE_PAIR, TRADE_TYPE, ENTRY_1)
+
+                        if is_modified_success:
+                            stop_loss_modified_tp_1 = True
+
+                elif TRADE_TYPE == 'SELL':
+
+                    # print('current_price = ', CURRENT_PRICE)
+                    # print('condition = ', ENTRY_1 - 0.1 * parameters[TRADE_PAIR]['gain_factors'][0])
+                    # print('stop_loss_modified = ', stop_loss_modified)
+
+                    # Do the 1st job
+                    if CURRENT_PRICE <= ENTRY_1 - 0.1 * parameters[TRADE_PAIR]['gain_factors'][0] and not stop_loss_modified:
+
+                        print('current_price = ', CURRENT_PRICE)
+                        print('condition = ', ENTRY_1 - 0.1 * parameters[TRADE_PAIR]['gain_factors'][0])
+                        print('stop_loss_modified = ', stop_loss_modified)
+
+                        # Modify stop loss for all open trades for XAUUSD
+                        is_modified_success = modify_stop_loss_to_entry(TRADE_PAIR)
+
+                        # Set the flag to True to ensure the modification is only done once
+                        if is_modified_success:
+                            stop_loss_modified = True
+
+                        # Send message to telegram
+                        send_telegram_message(f"🟡 #{TRADE_PAIR} - {TRADE_TYPE}\n"
+                                              "✅ +20 Pips  (Đang Có Lãi, AE Nên TP 1 Phần Lệnh Nhé)")
+
+                    # Do the 2nd job
+                    if CURRENT_PRICE >= ENTRY_2 and not stop_loss_modified_tp_1:
+                        print(f"Current price {CURRENT_PRICE} has reached Entry 2: {ENTRY_2}, modifying TP of Entry 1.")
+                        stop_loss_modified_tp_1 = modify_tp_of_entry_1(TRADE_PAIR, TRADE_TYPE, ENTRY_1)
+
+                        if is_modified_success:
+                            stop_loss_modified_tp_1 = True
 
             # Check for new messages every 5 seconds
             await asyncio.sleep(5)
